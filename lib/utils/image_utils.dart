@@ -90,27 +90,23 @@ abstract final class ImageUtils {
     final status = Platform.isAndroid
         ? await Permission.storage.request()
         : await Permission.photos.request();
-    if (status == PermissionStatus.denied ||
-        status == PermissionStatus.permanentlyDenied) {
-      SmartDialog.show(
-        builder: (context) => AlertDialog(
-          title: Text(uiTx('提示')),
-          content: Text(uiTx('存储权限未授权')),
-          actions: [
-            TextButton(
-              onPressed: () {
-                SmartDialog.dismiss();
-                openAppSettings();
-              },
-              child: Text(uiTx('去授权')),
-            ),
-          ],
-        ),
-      );
-      return false;
-    } else {
-      return true;
-    }
+    if (status.isGranted || status.isLimited) return true;
+    SmartDialog.show(
+      builder: (context) => AlertDialog(
+        title: Text(uiTx('提示')),
+        content: Text(uiTx(Platform.isIOS ? '相册权限未授权' : '存储权限未授权')),
+        actions: [
+          TextButton(
+            onPressed: () {
+              SmartDialog.dismiss();
+              openAppSettings();
+            },
+            child: Text(uiTx('去授权')),
+          ),
+        ],
+      ),
+    );
+    return false;
   }
 
   static FutureOr<bool> checkPermissionDependOnSdkInt() {
@@ -217,7 +213,8 @@ abstract final class ImageUtils {
             success = false;
           }
         }
-        await SaverGallery.saveFiles(saveList, skipIfExists: false);
+        final saved = await SaverGallery.saveFiles(saveList, skipIfExists: false);
+        success = success && saved.isSuccess;
       } else {
         for (final res in result) {
           if (res.statusCode == 200) {
@@ -317,14 +314,18 @@ abstract final class ImageUtils {
     SaveResult? res;
     fileName += '.$ext';
     if (PlatformUtils.isMobile) {
+      if (Platform.isIOS && !await requestPer()) return null;
       SmartDialog.showLoading(msg: uiTx('正在保存'));
-      res = await SaverGallery.saveImage(
-        bytes,
-        fileName: fileName,
-        albumPath: _albumPath,
-        skipIfExists: false,
-      );
-      SmartDialog.dismiss();
+      try {
+        res = await SaverGallery.saveImage(
+          bytes,
+          fileName: fileName,
+          albumPath: _albumPath,
+          skipIfExists: false,
+        );
+      } finally {
+        SmartDialog.dismiss(status: SmartStatus.loading);
+      }
       if (res.isSuccess) {
         SmartDialog.showToast(uiTx(' 已保存 '));
       } else {
@@ -361,6 +362,7 @@ abstract final class ImageUtils {
     }
     SaveResult? res;
     if (PlatformUtils.isMobile) {
+      if (Platform.isIOS && !await requestPer()) return;
       res = await SaverGallery.saveFile(
         filePath: filePath,
         fileName: fileName,
