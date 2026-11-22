@@ -37,10 +37,17 @@ jobs:
       - name: Build iOS
         run: |
           flutter build ios --release --no-codesign --dart-define-from-file=pili_release.json --no-pub
-          ln -sf ./build/ios/iphoneos Payload
-          # make AltSign happy...
-          find Payload/Runner.app/Frameworks -type d -name "*.framework" -exec codesign --force --sign - --preserve-metadata=identifier,entitlements {} \;
-          zip -r9 PiliNara_ios_${{env.version}}.ipa Payload/runner.app
+          app=build/ios/iphoneos/Runner.app
+          executable=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Info.plist")
+          xcrun lipo -verify_arch arm64 "$app/$executable"
+          # AltSign expects signatures on embedded frameworks. Leave Runner.app unsigned.
+          find "$app/Frameworks" -type d -name '*.framework' \
+            -exec codesign --force --sign - --preserve-metadata=identifier,entitlements {} +
+          mkdir -p Payload
+          ditto "$app" Payload/Runner.app
+          ipa="PiliBabel_ios_${version}_unsigned.ipa"
+          ditto -c -k --norsrc --keepParent Payload "$ipa"
+          unzip -tq "$ipa"
 
       - name: Release
         if: ${{ github.event.inputs.tag != '' }}
@@ -50,11 +57,12 @@ jobs:
           name: ${{ github.event.inputs.tag }}
           target_commitish: ${{ github.sha }}
           files: |
-            PiliNara_ios_*.ipa
+            PiliBabel_ios_*_unsigned.ipa
 
       - name: Upload ios release
         uses: actions/upload-artifact@v7
         with:
           archive: false
           name: iOS-release
-          path: PiliNara_ios_*.ipa
+          path: PiliBabel_ios_*_unsigned.ipa
+          if-no-files-found: error
