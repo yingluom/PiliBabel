@@ -9,6 +9,8 @@ on:
         default: ""
         type: string
   workflow_dispatch:
+  push:
+    branches: [ios-unsigned-build]
 
 jobs:
   build-macos-app:
@@ -50,7 +52,7 @@ jobs:
           unzip -tq "$ipa"
 
       - name: Release
-        if: ${{ github.event.inputs.tag != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag }}
