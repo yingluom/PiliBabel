@@ -41,7 +41,7 @@ jobs:
           flutter build ios --release --no-codesign --dart-define-from-file=pili_release.json --no-pub
           app=build/ios/iphoneos/Runner.app
           executable=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Info.plist")
-          xcrun lipo -verify_arch arm64 "$app/$executable"
+          xcrun lipo "$app/$executable" -verify_arch arm64
           # AltSign expects signatures on embedded frameworks. Leave Runner.app unsigned.
           find "$app/Frameworks" -type d -name '*.framework' \
             -exec codesign --force --sign - --preserve-metadata=identifier,entitlements {} +
