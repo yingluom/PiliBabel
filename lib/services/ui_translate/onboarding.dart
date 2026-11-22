@@ -6,7 +6,10 @@ import 'package:PiliPlus/pages/setting/ui_translate/view.dart';
 import 'package:PiliPlus/services/ui_translate/app_language.dart';
 import 'package:PiliPlus/services/ui_translate/translate_provider.dart';
 import 'package:PiliPlus/services/ui_translate/ui_translate_service.dart';
+import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -15,6 +18,48 @@ bool _coverHintShowing = false;
 
 /// 首次引导里默认选中的目标语言（系统语言匹配不到时的兜底）。
 const String onboardingFallbackLanguageCode = 'en';
+
+const _iosAppLanguageChannel = MethodChannel('pilibabel/app_language');
+
+Future<String?> _iosAppLanguage() async {
+  if (!Platform.isIOS) return null;
+  try {
+    final language = await _iosAppLanguageChannel.invokeMethod<String>(
+      'preferredLanguage',
+    );
+    return switch (language) {
+      'en' => 'en',
+      'ja' => 'ja',
+      'zh-Hans' => 'zh-CN',
+      'zh-Hant' => 'zh-TW',
+      _ => null,
+    };
+  } on PlatformException {
+    return null;
+  } on MissingPluginException {
+    return null;
+  }
+}
+
+/// iOS relaunches the app after its preferred language changes. On upgrade,
+/// record the initial iOS language without replacing an existing in-app choice.
+Future<void> syncIosAppLanguage() async {
+  final language = await _iosAppLanguage();
+  if (language == null) return;
+
+  final settings = GStorage.setting;
+  final previousLanguage = settings.get(SettingBoxKey.lastIosAppLanguage);
+  if (previousLanguage == language) return;
+
+  if (previousLanguage != null ||
+      !settings.containsKey(SettingBoxKey.uiTranslateLang)) {
+    await settings.put(SettingBoxKey.uiTranslateLang, language);
+    if (language != 'zh-CN') {
+      await settings.put(SettingBoxKey.uiTranslateEnabled, true);
+    }
+  }
+  await settings.put(SettingBoxKey.lastIosAppLanguage, language);
+}
 
 /// 从系统 locale 推断目标语言代码。
 ///
@@ -106,7 +151,7 @@ Future<void> _autoSetupAndGuide(BuildContext context) async {
       : Get.put(AiSettingController());
 
   // 自动识别系统语言并配置
-  final lang = detectSystemLanguageCode();
+  final lang = await _iosAppLanguage() ?? detectSystemLanguageCode();
   Pref.uiTranslateProvider = TranslateProvider.builtin;
   controller.saveUiTranslateLang(lang);
   // 自动开启
