@@ -20,6 +20,7 @@ import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/services/ui_translate/ui_translate_service.dart';
 import 'package:PiliPlus/services/ui_translate/app_language.dart';
 import 'package:PiliPlus/services/ui_translate/glossary_update_service.dart';
+import 'package:PiliPlus/services/ui_translate/onboarding.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/calc_window_position.dart';
 import 'package:PiliPlus/utils/cdn_region.dart';
@@ -111,6 +112,7 @@ void main() async {
     if (kDebugMode) debugPrint('GStorage init error: $e');
     exit(0);
   }
+  await syncIosAppLanguage();
   // 调色板删过重复色，下标表变了：先把老用户存的下标迁移到新表，
   // 否则他们的主题色会静默变成另一个颜色（详见 migrateColorPalette 注释）。
   migrateColorPalette();
@@ -316,6 +318,14 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   static ColorScheme? _light, _dark;
+  static const _simplifiedChinese = Locale('zh', 'CN');
+  static const _traditionalChinese = Locale.fromSubtags(
+    languageCode: 'zh',
+    scriptCode: 'Hant',
+    countryCode: 'TW',
+  );
+  static const _english = Locale('en', 'US');
+  static const _japanese = Locale('ja');
 
   /// 动态取色得到的亮/暗配色；未成功取色时为 null。
   ///
@@ -354,9 +364,21 @@ class MyApp extends StatelessWidget {
       darkTheme: dark,
       themeMode: ThemeUtils.themeMode = Pref.themeMode,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      locale: const Locale("zh", "CN"),
-      fallbackLocale: const Locale("zh", "CN"),
-      supportedLocales: const [Locale("zh", "CN"), Locale("en", "US")],
+      locale: Platform.isIOS && Pref.uiTranslateEnabled
+          ? switch (Pref.uiTranslateLang) {
+              'en' => _english,
+              'ja' => _japanese,
+              'zh-TW' => _traditionalChinese,
+              _ => _simplifiedChinese,
+            }
+          : _simplifiedChinese,
+      fallbackLocale: _simplifiedChinese,
+      supportedLocales: const [
+        _simplifiedChinese,
+        _english,
+        _japanese,
+        _traditionalChinese,
+      ],
       initialRoute: '/',
       getPages: Routes.getPages,
       defaultTransition: Pref.pageTransition,
