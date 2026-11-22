@@ -27,6 +27,13 @@
 		<false/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleLocalizations</key>
+		<array>
+			<string>en</string>
+			<string>ja</string>
+			<string>zh-Hans</string>
+			<string>zh-Hant</string>
+		</array>
 		<key>CFBundleDisplayName</key>
 		<string>PiliBabel</string>
 		<key>CFBundleExecutable</key>
@@ -71,7 +78,9 @@
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>请允许APP保存图片到相册</string>
+		<string>Allow PiliBabel to save images and videos to its album and access photos you choose to upload.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Allow PiliBabel to save images and videos to your photo library.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>App需要您的同意,才能访问相册</string>
 		<key>NSAppleMusicUsageDescription</key>

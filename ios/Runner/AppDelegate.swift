@@ -13,5 +13,15 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PiliBabelAppLanguage") {
+      let channel = FlutterMethodChannel(name: "pilibabel/app_language", binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler { call, result in
+        guard call.method == "preferredLanguage" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        result(Bundle.main.preferredLocalizations.first)
+      }
+    }
   }
 }
